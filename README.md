@@ -8,7 +8,7 @@ This repository contains a simple vocoder that works with live input. The vocode
 This demo works only with Chrome (the only browswer that supports Audio Worklets right now?)
 
 ## Live demo
-https://gerardllorach.github.io/Fortgeschritenne/
+https://web-based-vocoder.github.io/
 
 Hint: Drag and drop audio files (.wav and .mp3) at the bottom of the webpage to test it with your own files!
 
