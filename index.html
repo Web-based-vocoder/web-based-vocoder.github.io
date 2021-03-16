@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- more info: https://github.com/mdn/webaudio-examples
+https://mdn.github.io/webaudio-examples/iirfilter-node/
+https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode
+https://webaudioapi.com/samples/
+https://webaudioapi.com/samples/oscillator/
+
+Example of possibilities
+https://dood.al/pinktrombone/
+
+Audio worklet
+https://www.youtube.com/watch?v=g1L4O1smMC0
+https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
+
+Paper Overlap and add, time stretching (offline)
+https://smartech.gatech.edu/bitstream/handle/1853/54587/WAC2016-48.pdf
+
+
+DONE:
+- Simple overlap and add
+-->
+
+<!-- TODO
+
+
+- Analysis
+ - Pitch
+
+- Synthesis
+ - Overlap and add (https://github.com/echo66/OLA-TS.js/blob/master/OLA.js)
+ https://github.com/danigb/timestretch
+ https://smartech.gatech.edu/bitstream/handle/1853/54587/WAC2016-48.pdf
+   - - Probably not possible. Will need to do data augmentation (add fake signals at the beginning and end of frames to be able to overlap them).
+ - Create pulse trains
+ - Use Oscillator or Audio sample
+ - Oscillator info can be from the links above
+ - Melody famous song?
+
+ - 12/06/2020
+  - Use k for visualizing vocal tract
+  - Tool for manipulating speech
+
+
+
+-->
+  <head>
+    <title>AudioWorklet Demo</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+    <style type='text/css'>
+      html, body { width: 100%; height: 100%; margin: 0; padding: 0 ; background-color: black; overflow: hidden;}
+    </style>
+
+    <!-- import the webpage's javascript file -->
+    <script src="script.js"></script>
+  </head>
+  <body>
+
+  <!-- CANVAS -->
+  <canvas class="w-100 h-100" id="myCanvas" style="position: absolute;" style="background-color: black"></canvas>
+
+  <!-- Buttons -->
+  <div class="row align-self-center w-100 h-100">
+    <div class="col-6 align-self-center mx-auto text-center">
+      <!-- Play button -->
+      <div class="row">
+        <button id="playButton" type="button" class="btn btn-primary" style="position:relative; z-index: 3">Play Sound</button>
+      </div>
+      <!-- Microphone button -->
+      <div class="row">
+        <input id="inputButton" type="checkbox" style="position:relative; z-index: 3; color: white"><span style='color:#FFFFFF'>Mic Input</span></input>
+      </div>
+      <!-- Vocoder button -->
+      <div class="row">
+        <input id="vocoderButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Vocoder ON/OFF </span></input>
+      </div>
+      <!-- Perfect synth button -->
+      <div class="row" hidden>
+        <input id="perfectSynthButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Use Impulse Excitation ON/OFF </span></input>
+      </div>
+      <!-- Quantization button -->
+      <div class="row" hidden>
+        <input id="quantButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>K's quantization ON/OFF </span></input>
+        <input id="quantSlider" type="range" min="2" max="8" value="3" style="color:white;position:relative; z-index: 3;">
+        <p id="quantInfo" style="color: white"></p>
+      </div>
+      <!-- Vocal tract length slider -->
+      <div class="row" hidden>
+	      <p id="tractLengthName" style="color: white">Vocal tract length stretch factor</p>
+        <input id="tractLengthSlider" type="range" min="0.5" max="2" value="1" step="0.1" style="color:white;position:relative; z-index: 3;">
+        <p id="tractLengthInfo" style="color: white"></p>
+      </div>
+      <!-- Voiced/Unvoiced slider -->
+      <div class="row" hidden>
+        <p style="color: white">Voiced/unvoiced threshold</p>
+        <input id="voicedThresSlider" type="range" min="0.0" max="1" value="0.4" step="0.01" style="color:white;position:relative; z-index: 3;">
+        <p id="voicedThresInfo" style="color: white"></p>
+      </div>
+      <!-- Pitch slider -->
+      <div class="row" hidden>
+        <p style="color: white">Pitch factor</p>
+        <input id="pitchSlider" type="range" min="0.5" max="2" value="1" step="0.1" style="color:white;position:relative; z-index: 3;">
+        <p id="pitchInfo" style="color: white"></p>
+      </div>
+      <!-- Reverse k's button -->
+      <div class="row" hidden>
+        <input id="reverseKButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Reverse K's ON/OFF </span></input>
+      </div>
+      <!-- Audio list -->
+      <div class="row">
+        <div id="selSoundContainer" class="form-group">
+          <label for="sel1" style="color: white ">Select sound:</label>
+          <select class="form-control" id="selectAudio">
+          </select>
+        </div>
+      </div>
+      <!-- Audio loop -->
+      <div class="row">
+        <input id="loopButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Loop ON/OFF </span></input>
+      </div>
+
+    </div>
+  </div>
+
+	<!-- Documentation button -->
+	<div style="bottom:0; position:absolute; background-color: lime;">
+		<a class="btn btn-default pull-left" href="https://github.com/gerardllorach/gerardllorach.github.io/tree/master/Fortgeschritenne" target="_blank" style="z-index:3; position:relative;bottom:0">
+				 <img src="docs/img/iconPaper.png" width="20" height="20"/>
+		</a>
+	</div>
+
+
+
+
+
+  <!-- Bootrap additional libraries -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+  </body>
+</html>
