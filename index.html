@@ -1,147 +1,97 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<!-- more info: https://github.com/mdn/webaudio-examples
-https://mdn.github.io/webaudio-examples/iirfilter-node/
-https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode
-https://webaudioapi.com/samples/
-https://webaudioapi.com/samples/oscillator/
-
-Example of possibilities
-https://dood.al/pinktrombone/
-
-Audio worklet
-https://www.youtube.com/watch?v=g1L4O1smMC0
-https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
-
-Paper Overlap and add, time stretching (offline)
-https://smartech.gatech.edu/bitstream/handle/1853/54587/WAC2016-48.pdf
-
-
-DONE:
-- Simple overlap and add
--->
-
-<!-- TODO
-
-
-- Analysis
- - Pitch
-
-- Synthesis
- - Overlap and add (https://github.com/echo66/OLA-TS.js/blob/master/OLA.js)
- https://github.com/danigb/timestretch
- https://smartech.gatech.edu/bitstream/handle/1853/54587/WAC2016-48.pdf
-   - - Probably not possible. Will need to do data augmentation (add fake signals at the beginning and end of frames to be able to overlap them).
- - Create pulse trains
- - Use Oscillator or Audio sample
- - Oscillator info can be from the links above
- - Melody famous song?
-
- - 12/06/2020
-  - Use k for visualizing vocal tract
-  - Tool for manipulating speech
-
-
-
--->
   <head>
-    <title>AudioWorklet Demo</title>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Gerard Llorach and Mattes Ohlenbusch">
+    <title>Web-based vocoder</title>
+
+    <!-- Vue library -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 
     <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+    <!-- Feather icons https://feathericons.com/ -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 
-    <style type='text/css'>
+    <!--style type='text/css'>
       html, body { width: 100%; height: 100%; margin: 0; padding: 0 ; background-color: black; overflow: hidden;}
-    </style>
+    </style-->
 
     <!-- import the webpage's javascript file -->
-    <script src="script.js"></script>
+    <!--script src="script.js"></script-->
+
+
   </head>
   <body>
 
-  <!-- CANVAS -->
-  <canvas class="w-100 h-100" id="myCanvas" style="position: absolute;" style="background-color: black"></canvas>
-
-  <!-- Buttons -->
-  <div class="row align-self-center w-100 h-100">
-    <div class="col-6 align-self-center mx-auto text-center">
-      <!-- Play button -->
+    <div class="container-fluid" id="app">
+      <!-- Title -->
+      <div class="row justify-content-md-center">
+        <h1>Web-based vocoder</hi>
+      </div>
+      <!-- Row with buttons and 2d map" -->
       <div class="row">
-        <button id="playButton" type="button" class="btn btn-primary" style="position:relative; z-index: 3">Play Sound</button>
-      </div>
-      <!-- Microphone button -->
-      <div class="row">
-        <input id="inputButton" type="checkbox" style="position:relative; z-index: 3; color: white"><span style='color:#FFFFFF'>Mic Input</span></input>
-      </div>
-      <!-- Vocoder button -->
-      <div class="row">
-        <input id="vocoderButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Vocoder ON/OFF </span></input>
-      </div>
-      <!-- Perfect synth button -->
-      <div class="row" hidden>
-        <input id="perfectSynthButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Use Impulse Excitation ON/OFF </span></input>
-      </div>
-      <!-- Quantization button -->
-      <div class="row" hidden>
-        <input id="quantButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>K's quantization ON/OFF </span></input>
-        <input id="quantSlider" type="range" min="2" max="8" value="3" style="color:white;position:relative; z-index: 3;">
-        <p id="quantInfo" style="color: white"></p>
-      </div>
-      <!-- Vocal tract length slider -->
-      <div class="row" hidden>
-	      <p id="tractLengthName" style="color: white">Vocal tract length stretch factor</p>
-        <input id="tractLengthSlider" type="range" min="0.5" max="2" value="1" step="0.1" style="color:white;position:relative; z-index: 3;">
-        <p id="tractLengthInfo" style="color: white"></p>
-      </div>
-      <!-- Voiced/Unvoiced slider -->
-      <div class="row" hidden>
-        <p style="color: white">Voiced/unvoiced threshold</p>
-        <input id="voicedThresSlider" type="range" min="0.0" max="1" value="0.4" step="0.01" style="color:white;position:relative; z-index: 3;">
-        <p id="voicedThresInfo" style="color: white"></p>
-      </div>
-      <!-- Pitch slider -->
-      <div class="row" hidden>
-        <p style="color: white">Pitch factor</p>
-        <input id="pitchSlider" type="range" min="0.5" max="2" value="1" step="0.1" style="color:white;position:relative; z-index: 3;">
-        <p id="pitchInfo" style="color: white"></p>
-      </div>
-      <!-- Reverse k's button -->
-      <div class="row" hidden>
-        <input id="reverseKButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Reverse K's ON/OFF </span></input>
-      </div>
-      <!-- Audio list -->
-      <div class="row">
-        <div id="selSoundContainer" class="form-group">
-          <label for="sel1" style="color: white ">Select sound:</label>
-          <select class="form-control" id="selectAudio">
+        <!-- Column with buttons -->
+        <div class="col">
+          <button class="btn btn-success" type="button" v-on:click="playBtn" v-html="playMessage"></button>
+          <button class="btn" type="button" v-bind:class="[isLooping ? 'btn-primary' : 'btn-outline-secondary']" v-on:click="loopBtn" v-html="loopMessage"></button>
+          <button class="btn" v-bind:class="[isInputMic ? 'btn-danger' : 'btn-outline-secondary']" type="button" v-on:click="switchInputBtn" v-html="inputMessage"></button>
+          <!-- Dropdown audio files -->
+          <select class="form-control" v-model="selectedAudio" @change="changeAudioFile($event)" v-bind:disabled="isInputMic == true"> <!-- v-if="isInputMic" -->
+            <option value="" selected disabled>Select audio file</option>
+            <option v-for="audioFile in audioFiles" :value="audioFile.name" :key="audioFile.name">{{ audioFile.name }}</option>
           </select>
+          <!-- Drag and drop audio files -->
+          <div class="text-center" @dragover="ondragover($event)" @drop="ondrop($event)" style="height: 70px; border: 2px dashed blue"> <span class="align-middle"> Drag and drop your audio files here</span></div>
+
+          <button type="button" class="btn-lg" v-on:click="startVocoder" v-bind:class="[isVocoderOn ? 'btn-warning' : 'btn-outline-secondary']" v-html="vocoderMessage"></button>
+          <button type="button" class="btn btn-default" v-bind:class="[isImpulseOn ? 'btn-primary' : 'btn-outline-secondary']" v-on:click="impulseBtn" v-if="isVocoderOn">Impulse excitation</button>
+
+          <div v-if="isVocoderOn">
+            <!-- Vocal tract length factor -->
+            <div class="slider">
+              <p>Vocal tract length factor: {{vocalTractLengthFactor}}x factor</p>
+              <input type="range" min="0.5" max="2" value="1" step="0.1" v-model="vocalTractLengthFactor" @input="vocalTractSliderInput()"></input>
+            </div>
+            <!-- Voiced/unvoiced threshold -->
+            <div class="slider"  v-if="isImpulseOn">
+              <p>Voiced/unvoiced threshold: {{voicedThreshold}}</p>
+              <input type="range" min="0.0" max="1" value="0.4" step="0.01" v-model="voicedThreshold" @input="voicedSliderInput()"></input>
+            </div>
+            <!-- Pitch factor -->
+            <div class="slider"  v-if="isImpulseOn">
+              <p>Pitch factor: {{pitchFactor}}x factor</p>
+              <input type="range" min="0.5" max="2" value="1" step="0.1" v-model="pitchFactor" @input="pitchSliderInput()"></input>
+            </div>
+          </div>
+        </div>
+
+        <div class="col text-center">
+          <!-- 2D voice map canvas -->
+          <canvas id="2Dmap" v-show="isVocoderOn" width="500" height="500" style="width:500px; height:500px; border:1px solid #000000;"></canvas>
         </div>
       </div>
-      <!-- Audio loop -->
-      <div class="row">
-        <input id="loopButton" type="checkbox" style="position:relative; z-index: 3; color: white"> <span style='color:#FFFFFF'>Loop ON/OFF </span></input>
+
+      <!-- Row with signals -->
+      <div id="signals" class="row">
+        <!-- Columns with signals -->
+        <signal-canvas v-for="ss in signals"
+                        v-bind:signalname="ss"
+                        v-bind:id="ss"></signal-canvas>
       </div>
-
     </div>
-  </div>
 
-	<!-- Documentation button -->
-	<div style="bottom:0; position:absolute; background-color: lime;">
-		<a class="btn btn-default pull-left" href="https://github.com/Web-based-vocoder/web-based-vocoder.github.io" target="_blank" style="z-index:3; position:relative;bottom:0">
-				 <img src="docs/img/iconPaper.png" width="20" height="20"/>
-		</a>
-	</div>
-
-
+          <!-- Optional JavaScript -->
+          <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <!--
+          <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+          <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+        -->
 
 
 
-  <!-- Bootrap additional libraries -->
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
-  </body>
-</html>
+          <script src="script_vue.js"></script>
+      </body>
+  </html>
