@@ -2,7 +2,7 @@
 
 
 (async () => {
-  voiceMap = await import('./voiceMap_vue.js');
+  voiceMap = await import('./voiceMap.js');
 })();
 var voiceMap;
 
