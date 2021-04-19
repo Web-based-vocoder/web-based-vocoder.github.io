@@ -2,7 +2,7 @@
 
 
 (async () => {
-  voiceMap = await import('./voiceMap.js');
+  voiceMap = await import('./voiceMap_vue.js');
 })();
 var voiceMap;
 
@@ -146,10 +146,10 @@ var app = new Vue({
     isInputMic: true,
     // https://renatello.com/dynamic-drop-down-list-in-vue-js/
     audioFiles: [
-      { name: "Sample1", url: 'audioSamples/01248.wav' },
-      { name: "Sample2", url: 'audioSamples/02064.wav'  }
+      { name: "sample_male", url: 'audioSamples/sample_male.wav' },
+      { name: "sample_female", url: 'audioSamples/sample_female.wav'  }
     ],
-    selectedAudio: '',
+    selectedAudio: 'test',
     vocoderMessage: '<span>'+ feather.icons.zap.toSvg({'color': 'gray'}) +'Vocoder</span>' + feather.icons.zap.toSvg({'color': 'gray'}),
     isVocoderOn: false,
     vocalTractLengthFactor: 1,
@@ -265,6 +265,7 @@ var app = new Vue({
     // https://renatello.com/dynamic-drop-down-list-in-vue-js/
     changeAudioFile: function (event) {
       console.log(event.target.options[event.target.options.selectedIndex].text);
+      this.selectedAudio = event.target.options[event.target.options.selectedIndex].text;
     },
     // Start vocoder button event
     startVocoder: function() {
@@ -294,6 +295,7 @@ var app = new Vue({
         id: "voicedThreshold",
         voicedThreshold: parseFloat(app.$data.voicedThreshold),
       });
+      console.log(app.$data.voicedThreshold);
     },
     pitchSliderInput: function() {
       // Send tract length slider value to AudioWorklet
@@ -305,6 +307,22 @@ var app = new Vue({
   },
 });
 
+
+
+
+// Load initial audio files
+function loadInitialFiles(){
+  for (let i = 0; i<app.$data.audioFiles.length; i++ ){
+    let sName = app.$data.audioFiles[i].name;
+    let url = app.$data.audioFiles[i].url;
+    fetch(url)
+      .then((res, req) => res.arrayBuffer())
+      .then((arrayBuffer) => audioCtx.decodeAudioData(arrayBuffer))
+      .then((audioBuffer) => {soundBuffer[sName] = audioBuffer; console.log("Audio loaded: " + sName)})
+      .catch((e) => console.error(e));
+  }
+}
+loadInitialFiles();
 
 
 
@@ -428,6 +446,15 @@ function drawText(canvasCtx, text, posW, posH, inSize, inColor){
 
 
 
+// 2D interface
+let xMouse = 0;
+let yMouse = 0;
+let mouseState = 0;
+let canvas2Dmap = null;
+
+
+
+
 
 // Paint loop
 function draw(dt) {
@@ -445,25 +472,77 @@ function draw(dt) {
 
   // LPC coefficients
   if (workletBuffer !== null && workletBuffer !== undefined){
-  canvas = document.getElementById(app.$data.signals[1]).children[1];
-  canvasCtx = canvas.getContext("2d");
-  // Clear canvas
-  canvasCtx.clearRect(0,0, canvas.width, canvas.height);
-  // Plot LPC coefficients
-  if (lpcCoeff !== null && lpcCoeff !== undefined){
-    paintWave(canvas, canvasCtx, lpcCoeff);
-    //paintWave(canvasCtx, lpcCoeff);
+    canvas = document.getElementById(app.$data.signals[1]).children[1];
+    canvasCtx = canvas.getContext("2d");
+    // Clear canvas
+    canvasCtx.clearRect(0,0, canvas.width, canvas.height);
+    // Plot LPC coefficients
+    if (lpcCoeff !== null && lpcCoeff !== undefined){
+      paintWave(canvas, canvasCtx, lpcCoeff);
+      //paintWave(canvasCtx, lpcCoeff);
+    }
+
+
+    // LPC error signal
+    canvas = document.getElementById(app.$data.signals[2]).children[1];
+    canvasCtx = canvas.getContext("2d");
+    // Clear canvas
+    canvasCtx.clearRect(0,0, canvas.width, canvas.height);
+    paintWave(canvas, canvasCtx, errorSignal, 10, 'red');
+
+    // Excitation signal
+    canvas = document.getElementById(app.$data.signals[3]).children[1];
+    canvasCtx = canvas.getContext("2d");
+    // Clear canvas
+    canvasCtx.clearRect(0,0, canvas.width, canvas.height);
+    paintWave(canvas, canvasCtx, excitationSignal, 10);
+
+    // Audio blocks
+    canvas = document.getElementById(app.$data.signals[4]).children[1];
+    canvasCtx = canvas.getContext("2d");
+    // Clear canvas
+    canvasCtx.clearRect(0,0, canvas.width, canvas.height);
+    paintWave(canvas, canvasCtx, pBlock);
+    paintWave(canvas, canvasCtx, oBlock);
+
+    // Plot buffer Even
+    canvas = document.getElementById(app.$data.signals[5]).children[1];
+    canvasCtx = canvas.getContext("2d");
+    // Clear canvas
+    canvasCtx.clearRect(0,0, canvas.width, canvas.height);
+    paintWave(canvas, canvasCtx, workletBuffer);
+
+    // Plot buffer Odd
+    canvas = document.getElementById(app.$data.signals[6]).children[1];
+    canvasCtx = canvas.getContext("2d");
+    // Clear canvas
+    canvasCtx.clearRect(0,0, canvas.width, canvas.height);
+    paintWave(canvas, canvasCtx, workletBuffer2);
   }
 
+  // Draw 2D interface (Voice Map)
+  if (app.$data.isVocoderOn) {
+    // Get canvas if null
+    if (canvas2Dmap === null){
+      canvas2Dmap = document.getElementById("2Dmap");
 
-  // LPC error signal
-  canvas = document.getElementById(app.$data.signals[2]).children[1];
-  canvasCtx = canvas.getContext("2d");
-  // Clear canvas
-  canvasCtx.clearRect(0,0, canvas.width, canvas.height);
-  paintWave(canvas, canvasCtx, errorSignal, 10, 'red');
+      canvas2Dmap.onmousemove = canvas2Dmap.onmousedown = (e) => {
+
+        xMouse = e.clientX;
+        yMouse = e.clientY;
+        mouseState = e.buttons; // 1 left, 2 right
+      };
+    }
+
+    canvasCtx = canvas2Dmap.getContext("2d");
+    // Clear canvas
+    canvasCtx.clearRect(0,0, canvas2Dmap.width, canvas2Dmap.height);
+    // Get parameters
+    var paramsVoice = voiceMap.voiceMapUpdate(canvas2Dmap, canvasCtx, xMouse, yMouse, mouseState);
+    if (paramsVoice !== undefined){
+      vocoderNode.port.postMessage(paramsVoice);
+    }
   }
-
 
 
 
