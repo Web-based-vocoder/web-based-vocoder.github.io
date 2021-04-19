@@ -281,6 +281,8 @@ var app = new Vue({
     },
     impulseBtn: function() {
       this.isImpulseOn = !this.isImpulseOn;
+      disconnect_all();
+      connect_source();
     },
     vocalTractSliderInput: function() {
       // Send tract length slider value to AudioWorklet
