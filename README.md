@@ -1,6 +1,7 @@
 # Web-based vocoder with Audio Worklets and live input
- Gerard Llorach and Mattes Ohlenbusch
-December 2020
+Llorach*, G., Ohlenbusch*, M. and Brand T. 2021. Live Voice Transformations For Web Conferencing Using The Browser. Demo for the Web Audio Conference 2021, July 5-7. https://webaudioconf2021.com/demo-1/
+
+*Corresponding authors.
 
 ## Description
 This repository contains a simple vocoder that works with live input. The vocoder uses LPC coefficients to do voice transformations and/or visualization of the vocal tract in real-time. The output signal is synthesized with an overlap and add routine. The description of the project is organized in chapters.
@@ -11,6 +12,8 @@ This demo works only with Chrome (the only browswer that supports Audio Worklets
 https://web-based-vocoder.github.io/
 
 Hint: Drag and drop audio files (.wav and .mp3) at the bottom of the webpage to test it with your own files!
+
+Video demo: https://youtu.be/5dy-rxXkHMk
 
 ## Chapters
 #### [Introduction to the Web Audio API](docs/Introduction.md)
